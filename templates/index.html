@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PirateTemp</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <style>
+        canvas {
+            width: 80%;
+            height: auto;
+            max-height: 80vh;
+            display: block;
+            margin: auto;
+        }
+        h1, p , div {
+                text-align: center;
+        }
+        .logo-container {
+            text-align: center;
+        }
+        .logo-container img {
+            margin: 0 10px;
+            max-width: 60%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>
+        <div class="logo-container">
+            <img src="/static/logo.png" alt="You wouldn't steal a weatherstation"/>
+        </div>
+    </h1>
+    <canvas id="myChart"></canvas>
+    <script>
+
+        function getRandomColor() {
+            const red = Math.floor(Math.random() * 256);
+            const green = Math.floor(Math.random() * 256);
+            const blue = Math.floor(Math.random() * 256);
+            const color = `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}`;
+
+            return color;
+        }
+
+        let myChart;
+
+        function fetch_and_update(ctx) {
+
+            function fetch_and_render() {
+                fetch('/query')
+                .then(response => response.json())
+                .then(data => {
+                    const datasets = {};
+
+                    data.forEach(point => {
+                        const lastValue = point[point.length - 1];
+                        if (!datasets.hasOwnProperty(lastValue)) {
+                            datasets[lastValue] = {
+                                label: 'Temperature ' + lastValue,
+                                data: [],
+                                borderColor: getRandomColor(),
+                                borderWidth: 1,
+                                tension: 0.4
+                            };
+                        }
+
+                        datasets[lastValue].data.push({
+                            x: new Date(point[0]),
+                            y: point[1]
+                        });
+                    });
+                    if (myChart) {
+                        myChart.destroy();
+                    }
+                    const ctx = document.getElementById('myChart').getContext('2d');
+                    myChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            datasets: Object.values(datasets)
+                        },
+                        options: {
+                            scales: {
+                                x: {
+                                    type: 'time',
+                                    time: {
+                                        unit: 'hour'
+                                    }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    position: 'left',
+                                    title: {
+                                        display: true,
+                                        text: 'Temperature'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+            }
+        fetch_and_render();
+        
+        //Refresh chart every 30 sec
+        const newData_interval = 30000;
+        setInterval(fetch_and_render, newData_interval);
+    }
+    var ctx = document.getElementById('myChart').getContext('2d');
+    fetch_and_update(ctx);
+    </script>
+</body>
+</html>
